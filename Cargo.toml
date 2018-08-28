@@ -1,0 +1,6 @@
+[package]
+name = "dcmimu"
+version = "0.1.0"
+authors = ["Alexander Zhuravlev", "Roma Sokolov"]
+
+[dependencies]
