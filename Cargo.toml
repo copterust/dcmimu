@@ -1,6 +1,13 @@
+cargo-features = ["edition", "rename-dependency"]
+
 [package]
 name = "dcmimu"
 version = "0.1.0"
 authors = ["Alexander Zhuravlev", "Roma Sokolov"]
+description = "no_std DCM IMU implementation"
+keywords = ["no_std", "dcm", "imu", "ekf"]
+license = "MIT"
+edition = '2018'
 
 [dependencies]
+libm = "0.1.2"
