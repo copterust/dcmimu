@@ -6,6 +6,10 @@ A `no_std` Rust port of [the original](https://github.com/hhyyti/dcm-imu).
 
 [![Build Status](https://travis-ci.org/copterust/dcmimu.svg?branch=master)](https://travis-ci.org/copterust/dcmimu)
 
+*NOTE*: `libm` still [doesn't with overflow checks](https://github.com/japaric/libm/issues/4),
+so you have to compile your project with `--release`.
+Leave a comment in the linked issue to [raise awareness](https://www.youtube.com/watch?v=KbZIFZm204E).
+
 ## Credentials
 
 [Heikki Hyyti and Arto Visala, "A DCM Based Attitude Estimation Algorithm for Low-Cost MEMS IMUs," International Journal of Navigation and Observation, vol. 2015, Article ID 503814, 18 pages, 2015](http://dx.doi.org/10.1155/2015/503814).
