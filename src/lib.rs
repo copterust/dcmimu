@@ -127,7 +127,12 @@ impl DCMIMU {
 
     /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
     /// and dt (seconds) and returns current estimations ({roll; yaw; pitch}).
-    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) -> YPR {
+    pub fn update(
+        &mut self,
+        gyro: (f32, f32, f32),
+        accel: (f32, f32, f32),
+        dt: f32,
+    ) -> TaitBryanAngles {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1057,8 +1062,8 @@ impl DCMIMU {
     }
 
     /// Returns all moments (yaw, roll, pitch)
-    pub fn all(&self) -> YPR {
-        YPR {
+    pub fn all(&self) -> TaitBryanAngles {
+        TaitBryanAngles {
             yaw: self.yaw,
             roll: self.roll,
             pitch: self.pitch,
@@ -1090,7 +1095,7 @@ impl DCMIMU {
 /// See https://en.wikipedia.org/wiki/Euler_angles#Tait%E2%80%93Bryan_angles
 /// and https://en.wikipedia.org/wiki/Aircraft_principal_axes.
 #[derive(Debug, Clone, Copy)]
-pub struct YPR {
+pub struct TaitBryanAngles {
     pub yaw: f32,
     pub pitch: f32,
     pub roll: f32,
