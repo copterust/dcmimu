@@ -5,8 +5,9 @@ name = "dcmimu"
 version = "0.1.0"
 authors = ["Alexander Zhuravlev", "Roma Sokolov"]
 description = "no_std DCM IMU implementation"
-keywords = ["no_std", "dcm", "imu", "ekf"]
+keywords = ["no_std", "dcm", "imu", "ekf", "kalman", "sensor-fusion"]
 license = "MIT"
+readme = "Readme.md"
 edition = '2018'
 
 [dependencies]

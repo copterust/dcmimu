@@ -1,8 +1,42 @@
+//! no_std implementation of Heikki Hyyti and Arto Visala DCM-IMU algorithm.
+//! """The DCM-IMU algorithm is designed for fusing low-cost triaxial MEMS
+//! gyroscope and accelerometer measurements. An extended Kalman filter is used
+//! to estimate attitude in direction cosine matrix (DCM) formation and
+//! gyroscope biases online. A variable measurement covariance method is
+//! implemented for acceleration measurements to ensure robustness against
+//! transient non-gravitational accelerations which usually induce errors
+//! to attitude estimate in ordinary IMU-algorithms."""
+//!
+//! # Usage
+//! ```
+//! # Create DCMIMU:
+//! let mut dcmimu = DCMIMU::new();
+//! let mut prev_t_ms = now();
+//! loop {
+//!     # get gyroscope and accelerometer measurement from your sensors:
+//!     let gyro = sensor.read_gyro();
+//!     let accel = sensor.read_accel();
+//!     # Convert measurements to SI if needed.
+//!     # Get time difference since last update:
+//!     let t_ms = now();
+//!     let dt_ms = t_ms - prev_t_ms
+//!     prev_t_ms = t_ms
+//!     # Update dcmimu states (don't forget to use SI):
+//!     let dcm = dcmimu.update((gyro.x, gyro.y, gyro.z),
+//!                             (accel.x, accel.y, accel.z),
+//!                             dt_ms.seconds());
+//!     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
+//!     # Measurements can also be queried without updating:
+//!     println!("{:?} == {}, {}, {}", dcmimu.all(), dcmimu.roll(), dcmimu.yaw(), dcmimu.pitch());
+//! }
+//! ```
+//!
+
 #![no_std]
 #![allow(non_snake_case)]
 #![deny(warnings)]
 
-use libm::F32Ext;
+use libm::{asinf, atan2f, cosf, sinf, sqrtf};
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub struct DCMIMU {
@@ -90,8 +124,9 @@ impl DCMIMU {
         }
     }
 
-    /// Update with gyro (x, y, z), accel (x, y, z), and dt (seconds).
-    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) {
+    /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
+    /// and dt (seconds) and returns current estimations ({roll; yaw; pitch}).
+    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) -> VTL {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -364,7 +399,7 @@ impl DCMIMU {
         let y0 = ax - self.g0 * x_0;
         let y1 = ay - self.g0 * x_1;
         let y2 = az - self.g0 * x_2;
-        let a_len = (y0 * y0 + y1 * y1 + y2 * y2).sqrt();
+        let a_len = sqrtf(y0 * y0 + y1 * y1 + y2 * y2);
 
         let S00 = self.r_acc2 + a_len * self.r_a2 + P_00 * self.g0_2;
         let S01 = P_01 * self.g0_2;
@@ -859,7 +894,7 @@ impl DCMIMU {
                     + K51 * (K50 * P_01 + K51 * P_11 + K52 * P_21)
                     + K52 * (K50 * P_02 + K51 * P_12 + K52 * P_22));
 
-        let len = (self.x0 * self.x0 + self.x1 * self.x1 + self.x2 * self.x2).sqrt();
+        let len = sqrtf(self.x0 * self.x0 + self.x1 * self.x1 + self.x2 * self.x2);
         let invlen3 = 1.0 / (len * len * len);
         let invlen32 = invlen3 * invlen3;
 
@@ -992,9 +1027,9 @@ impl DCMIMU {
         // compute Euler angles
         let u_nb1 = gy - self.x4;
         let u_nb2 = gz - self.x5;
-        let cy = self.yaw.cos();
-        let sy = self.yaw.sin();
-        let d = (x_last[1] * x_last[1] + x_last[2] * x_last[2]).sqrt();
+        let cy = cosf(self.yaw);
+        let sy = sinf(self.yaw);
+        let d = sqrtf(x_last[1] * x_last[1] + x_last[2] * x_last[2]);
         let d_inv = 1.0 / d;
         // compute needed parts of rotation matrix R (state and angle based version, equivalent with the commented version above)
         let R11 = cy * d;
@@ -1008,19 +1043,21 @@ impl DCMIMU {
         let R11_new = R11 + dt * (u_nb2 * R12 - u_nb1 * R13);
         let R21_new = R21 + dt * (u_nb2 * R22 - u_nb1 * R23);
 
-        self.yaw = R21_new.atan2(R11_new);
-        self.pitch = (-self.x0).asin();
-        self.roll = self.x1.atan2(self.x2);
+        self.yaw = atan2f(R21_new, R11_new);
+        self.pitch = asinf(-self.x0);
+        self.roll = atan2f(self.x1, self.x2);
 
         // save the estimated non-gravitational acceleration
         self.a0 = ax - self.x0 * self.g0;
         self.a1 = ay - self.x1 * self.g0;
         self.a2 = az - self.x2 * self.g0;
+
+        self.all()
     }
 
     /// Returns all moments (yaw, roll, pitch)
-    pub fn all(&self) -> Moments {
-        Moments {
+    pub fn all(&self) -> VTL {
+        VTL {
             yaw: self.yaw,
             roll: self.roll,
             pitch: self.pitch,
@@ -1043,13 +1080,14 @@ impl DCMIMU {
     }
 }
 
-/// Represents three dimensions: yaw, nose left or right about an axis running
-/// up and down; pitch, nose up or down about an axis running from wing to wing;
-/// and roll, rotation about an axis running from nose to tail. The axes are
-/// alternatively designated as vertical, transverse, and longitudinal
-/// respectively.
+/// Represents three dimensions:
+///  *yaw, nose left or right about an axis running up and down;
+///  *pitch, nose up or down about an axis running from wing to wing;
+///  * roll, rotation about an axis running from nose to tail.
+/// The axes are alternatively designated as
+/// vertical, transverse, and longitudinal respectively.
 #[derive(Debug, Clone, Copy)]
-pub struct Moments {
+pub struct VTL {
     pub yaw: f32,
     pub pitch: f32,
     pub roll: f32,
