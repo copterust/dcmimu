@@ -127,7 +127,7 @@ impl DCMIMU {
 
     /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
     /// and dt (seconds) and returns current estimations ({roll; yaw; pitch}).
-    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) -> VTL {
+    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) -> YPR {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1057,8 +1057,8 @@ impl DCMIMU {
     }
 
     /// Returns all moments (yaw, roll, pitch)
-    pub fn all(&self) -> VTL {
-        VTL {
+    pub fn all(&self) -> YPR {
+        YPR {
             yaw: self.yaw,
             roll: self.roll,
             pitch: self.pitch,
@@ -1082,13 +1082,15 @@ impl DCMIMU {
 }
 
 /// Represents three dimensions:
-///  *yaw, nose left or right about an axis running up and down;
-///  *pitch, nose up or down about an axis running from wing to wing;
+///  * yaw, nose left or right about an axis running up and down;
+///  * pitch, nose up or down about an axis running from wing to wing;
 ///  * roll, rotation about an axis running from nose to tail.
 /// The axes are alternatively designated as
 /// vertical, transverse, and longitudinal respectively.
+/// See https://en.wikipedia.org/wiki/Euler_angles#Tait%E2%80%93Bryan_angles
+/// and https://en.wikipedia.org/wiki/Aircraft_principal_axes.
 #[derive(Debug, Clone, Copy)]
-pub struct VTL {
+pub struct YPR {
     pub yaw: f32,
     pub pitch: f32,
     pub roll: f32,
