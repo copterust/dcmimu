@@ -36,6 +36,7 @@
 #![allow(non_snake_case)]
 #![deny(warnings)]
 
+extern crate libm;
 use libm::{asinf, atan2f, cosf, sinf, sqrtf};
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
