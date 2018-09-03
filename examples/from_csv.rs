@@ -51,13 +51,13 @@ fn main() {
         let (gx, gy, gz) = gyro(&record);
         let (p, y, r) = reference(&record);
         let dt = if prev_t == 0.0 {
-            0.0001780986785888672
+            0.00
         } else {
             time - prev_t
         };
         prev_t = time;
-        dcmimu.update((ax as f32, ay as f32, az as f32),
-            (gx as f32, gy as f32, gz as f32), dt as f32);
+        dcmimu.update((gx as f32, gy as f32, gz as f32),
+            (ax as f32, ay as f32, az as f32), dt as f32);
         println!("{:2.8} {:2.8} {:2.8} | {:2.8} {:2.8} {:2.8}",
             dcmimu.yaw(), dcmimu.pitch(), dcmimu.roll(),
             y, p, r);
