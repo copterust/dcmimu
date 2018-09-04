@@ -132,7 +132,7 @@ impl DCMIMU {
         gyro: (f32, f32, f32),
         accel: (f32, f32, f32),
         dt: f32,
-    ) -> TaitBryanAngles {
+    ) -> EulerAngles {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1061,9 +1061,9 @@ impl DCMIMU {
         self.all()
     }
 
-    /// Returns all moments (yaw, roll, pitch)
-    pub fn all(&self) -> TaitBryanAngles {
-        TaitBryanAngles {
+    /// Returns all angles (yaw, roll, pitch)
+    pub fn all(&self) -> EulerAngles {
+        EulerAngles {
             yaw: self.yaw,
             pitch: self.pitch,
             roll: self.roll,
