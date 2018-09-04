@@ -1065,8 +1065,8 @@ impl DCMIMU {
     pub fn all(&self) -> TaitBryanAngles {
         TaitBryanAngles {
             yaw: self.yaw,
-            roll: self.roll,
             pitch: self.pitch,
+            roll: self.roll,
         }
     }
 
@@ -1092,10 +1092,10 @@ impl DCMIMU {
 ///  * roll, rotation about an axis running from nose to tail.
 /// The axes are alternatively designated as
 /// vertical, transverse, and longitudinal respectively.
-/// See https://en.wikipedia.org/wiki/Euler_angles#Tait%E2%80%93Bryan_angles
+/// See https://en.wikipedia.org/wiki/Euler_angles
 /// and https://en.wikipedia.org/wiki/Aircraft_principal_axes.
 #[derive(Debug, Clone, Copy)]
-pub struct TaitBryanAngles {
+pub struct EulerAngles {
     pub yaw: f32,
     pub pitch: f32,
     pub roll: f32,
