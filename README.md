@@ -33,9 +33,9 @@ loop {
     let dt_ms = t_ms - prev_t_ms
     prev_t_ms = t_ms
     # Update dcmimu states (don't forget to use SI):
-    let dcm = dcmimu.update((gyro.x, gyro.y, gyro.z),
-                            (accel.x, accel.y, accel.z),
-                            dt_ms.seconds());
+    let (dcm, _gyro_biases) = dcmimu.update((gyro.x, gyro.y, gyro.z),
+                                            (accel.x, accel.y, accel.z),
+                                            dt_ms.seconds());
     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
     # Measurements can also be queried without updating:
     println!("{:?} == {}, {}, {}", dcmimu.all(), dcmimu.roll(), dcmimu.yaw(), dcmimu.pitch());

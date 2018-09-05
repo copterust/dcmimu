@@ -22,7 +22,7 @@
 //!     let dt_ms = t_ms - prev_t_ms
 //!     prev_t_ms = t_ms
 //!     # Update dcmimu states (don't forget to use SI):
-//!     let dcm = dcmimu.update((gyro.x, gyro.y, gyro.z),
+//!     let (dcm, _gyro_biases) = dcmimu.update((gyro.x, gyro.y, gyro.z),
 //!                             (accel.x, accel.y, accel.z),
 //!                             dt_ms.seconds());
 //!     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
@@ -126,13 +126,15 @@ impl DCMIMU {
     }
 
     /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
-    /// and dt (seconds) and returns current estimations ({roll; yaw; pitch}).
+    /// and dt (seconds) and returns current estimations and current gyroscope
+    /// biases({roll; yaw; pitch}, {gbx, gby, gbz}).
+    /// Angles are in rad, biases are in rad/s.
     pub fn update(
         &mut self,
         gyro: (f32, f32, f32),
         accel: (f32, f32, f32),
         dt: f32,
-    ) -> EulerAngles {
+    ) -> (EulerAngles, GyroBiases) {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1058,7 +1060,7 @@ impl DCMIMU {
         self.a1 = ay - self.x1 * self.g0;
         self.a2 = az - self.x2 * self.g0;
 
-        self.all()
+        (self.all(), self.gyro_biases())
     }
 
     /// Returns all angles (yaw, roll, pitch)
@@ -1070,19 +1072,28 @@ impl DCMIMU {
         }
     }
 
-    /// Yaw
+    /// Returns current yaw estimation.
     pub fn yaw(&self) -> f32 {
         self.yaw
     }
 
-    /// Pitch
+    /// Returns current pitch estimation.
     pub fn pitch(&self) -> f32 {
         self.pitch
     }
 
-    /// Roll
+    /// Returns current roll estimation.
     pub fn roll(&self) -> f32 {
         self.roll
+    }
+
+    /// Returns current value of gyro biases.
+    pub fn gyro_biases(&self) -> GyroBiases {
+        GyroBiases {
+            x: self.x3,
+            y: self.x4,
+            z: self.x5,
+        }
     }
 }
 
@@ -1099,4 +1110,12 @@ pub struct EulerAngles {
     pub yaw: f32,
     pub pitch: f32,
     pub roll: f32,
+}
+
+/// Calculated gyro biases
+#[derive(Debug, Clone, Copy)]
+pub struct GyroBiases {
+    x: f32,
+    y: f32,
+    z: f32,
 }
