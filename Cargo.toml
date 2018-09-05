@@ -1,6 +1,6 @@
 [package]
 name = "dcmimu"
-version = "0.1.6-alpha.0"
+version = "0.2.0"
 authors = ["Alexander Zhuravlev", "Roma Sokolov"]
 description = "no_std DCM IMU implementation"
 keywords = ["no_std", "dcm", "imu", "kalman", "sensor-fusion"]
