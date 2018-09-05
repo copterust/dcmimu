@@ -1115,7 +1115,10 @@ pub struct EulerAngles {
 /// Calculated gyro biases
 #[derive(Debug, Clone, Copy)]
 pub struct GyroBiases {
-    x: f32,
-    y: f32,
-    z: f32,
+    /// X
+    pub x: f32,
+    /// Y
+    pub y: f32,
+    /// Z
+    pub z: f32,
 }
