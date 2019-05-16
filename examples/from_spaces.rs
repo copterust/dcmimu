@@ -37,15 +37,13 @@ fn main() {
             parse_float(vec[8]),
             parse_float(vec[9]),
         );
-        dcmimu.update((gx, gy, gz), (ax, ay, az), dt_s);
-        println!(
-            "{:2.8},{:2.8},{:2.8},{:2.8},{:2.8},{:2.8}",
-            dcmimu.yaw(),
-            dcmimu.pitch(),
-            dcmimu.roll(),
-            ry,
-            rp,
-            rr
-        );
+        let (ypr, _gyro_biases) = dcmimu.update((gx, gy, gz), (ax, ay, az), dt_s);
+
+        for f in [ypr.yaw, ypr.pitch, ypr.roll, ry, rp, rr].into_iter() {
+            let mut b = ryu::Buffer::new();
+            let s = b.format(*f);
+            print!("{}, ", s);
+        }
+        println!();
     }
 }

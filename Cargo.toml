@@ -14,3 +14,4 @@ libm = "0.1.2"
 
 [dev-dependencies]
 csv = "1.0.0"
+ryu = "0.2"
