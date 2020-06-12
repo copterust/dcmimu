@@ -7,7 +7,7 @@ keywords = ["no_std", "dcm", "imu", "kalman", "sensor-fusion"]
 categories = ["embedded", "hardware-support", "no-std", "navigation"]
 license = "MIT"
 repository = "https://github.com/copterust/dcmimu"
-readme = "Readme.md"
+readme = "README.md"
 
 [dependencies]
 libm = "0.1.2"

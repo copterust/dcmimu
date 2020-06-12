@@ -1112,6 +1112,16 @@ pub struct EulerAngles {
     pub roll: f32,
 }
 
+impl Default for EulerAngles {
+    fn default() -> Self {
+        EulerAngles {
+            yaw: 0.0,
+            pitch: 0.0,
+            roll: 0.0
+        }
+    }
+}
+
 /// Calculated gyro biases
 #[derive(Debug, Clone, Copy)]
 pub struct GyroBiases {
