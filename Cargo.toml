@@ -10,7 +10,7 @@ repository = "https://github.com/copterust/dcmimu"
 readme = "README.md"
 
 [dependencies]
-libm = "0.1.2"
+libm = "0.2.11"
 
 [dev-dependencies]
 csv = "1.0.0"
