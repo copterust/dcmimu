@@ -65,7 +65,7 @@ const INITIAL_BIAS_VARIANCE: f32 = 0.1 * 0.1;
 
 impl DCMIMU {
     /// New
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         DCMIMU {
             g0: GRAVITY,
