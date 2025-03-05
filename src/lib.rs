@@ -22,12 +22,9 @@
 //!     let dt_ms = t_ms - prev_t_ms
 //!     prev_t_ms = t_ms
 //!     # Update dcmimu states (don't forget to use SI):
-//!     let (dcm, _gyro_biases) = dcmimu.update((gyro.x, gyro.y, gyro.z),
-//!                             (accel.x, accel.y, accel.z),
-//!                             dt_ms.seconds());
+//!     dcmimu.update((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
+//!     let dcm = dcmimu.to_euler_angles();
 //!     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
-//!     # Measurements can also be queried without updating:
-//!     println!("{:?} == {}, {}, {}", dcmimu.all(), dcmimu.roll(), dcmimu.yaw(), dcmimu.pitch());
 //! }
 //! ```
 //!
@@ -49,7 +46,7 @@ pub struct DCMIMU {
     r_acc2: f32,
     r_a2: f32,
     a0: f32, a1: f32, a2: f32,
-    yaw: f32, pitch: f32, roll: f32,
+    yaw: f32,
     // matrix
     P00: f32, P01: f32, P02: f32, P03: f32, P04: f32, P05: f32,
     P10: f32, P11: f32, P12: f32, P13: f32, P14: f32, P15: f32,
@@ -84,8 +81,6 @@ impl DCMIMU {
             a1: 0.0,
             a2: 0.0,
             yaw: 0.0,
-            pitch: 0.0,
-            roll: 0.0,
             P00: INITIAL_DCM_VARIANCE,
             P01: 0.0,
             P02: 0.0,
@@ -126,15 +121,10 @@ impl DCMIMU {
     }
 
     /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
-    /// and dt (seconds) and returns current estimations and current gyroscope
-    /// biases({roll; yaw; pitch}, {gbx, gby, gbz}).
+    /// and dt (seconds). To get the current estimations call the `to_euler_angles` method, for the
+    /// gyroscope biases use `gyro_biases`.
     /// Angles are in rad, biases are in rad/s.
-    pub fn update(
-        &mut self,
-        gyro: (f32, f32, f32),
-        accel: (f32, f32, f32),
-        dt: f32,
-    ) -> (EulerAngles, GyroBiases) {
+    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1052,39 +1042,20 @@ impl DCMIMU {
         let R21_new = R21 + dt * (u_nb2 * R22 - u_nb1 * R23);
 
         self.yaw = atan2f(R21_new, R11_new);
-        self.pitch = asinf(-self.x0);
-        self.roll = atan2f(self.x1, self.x2);
 
         // save the estimated non-gravitational acceleration
         self.a0 = ax - self.x0 * self.g0;
         self.a1 = ay - self.x1 * self.g0;
         self.a2 = az - self.x2 * self.g0;
-
-        (self.all(), self.gyro_biases())
     }
 
     /// Returns all angles (yaw, roll, pitch)
-    pub fn all(&self) -> EulerAngles {
+    pub fn to_euler_angles(&self) -> EulerAngles {
         EulerAngles {
             yaw: self.yaw,
-            pitch: self.pitch,
-            roll: self.roll,
+            pitch: asinf(-self.x0),
+            roll: atan2f(self.x1, self.x2),
         }
-    }
-
-    /// Returns current yaw estimation.
-    pub fn yaw(&self) -> f32 {
-        self.yaw
-    }
-
-    /// Returns current pitch estimation.
-    pub fn pitch(&self) -> f32 {
-        self.pitch
-    }
-
-    /// Returns current roll estimation.
-    pub fn roll(&self) -> f32 {
-        self.roll
     }
 
     /// Returns current value of gyro biases.

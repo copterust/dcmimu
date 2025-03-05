@@ -19,26 +19,22 @@ Leave a comment in the linked issue to [raise awareness](https://www.youtube.com
 Library is available via crates.io [![crates.io](http://meritbadge.herokuapp.com/dcmimu?style=flat-square)](https://crates.io/crates/dcmimu).
 
 ```rust
-
-# Create DCMIMU:
+// Create DCMIMU:
 let mut dcmimu = DCMIMU::new();
 let mut prev_t_ms = now();
 loop {
-    # get gyroscope and accelerometer measurement from your sensors:
+    // get gyroscope and accelerometer measurement from your sensors:
     let gyro = sensor.read_gyro();
     let accel = sensor.read_accel();
-    # Convert measurements to SI if needed.
-    # Get time difference since last update:
+    // Convert measurements to SI if needed.
+    // Get time difference since last update:
     let t_ms = now();
     let dt_ms = t_ms - prev_t_ms
     prev_t_ms = t_ms
-    # Update dcmimu states (don't forget to use SI):
-    let (dcm, _gyro_biases) = dcmimu.update((gyro.x, gyro.y, gyro.z),
-                                            (accel.x, accel.y, accel.z),
-                                            dt_ms.seconds());
+    // Update dcmimu states (don't forget to use SI):
+    dcmimu.update((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
+    let dcm = dcmimu.to_euler_angles();
     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
-    # Measurements can also be queried without updating:
-    println!("{:?} == {}, {}, {}", dcmimu.all(), dcmimu.roll(), dcmimu.yaw(), dcmimu.pitch());
 }
 
 ```
