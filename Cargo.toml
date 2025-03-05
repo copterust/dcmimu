@@ -8,6 +8,7 @@ categories = ["embedded", "hardware-support", "no-std", "navigation"]
 license = "MIT"
 repository = "https://github.com/copterust/dcmimu"
 readme = "README.md"
+edition = "2021"
 
 [dependencies]
 libm = "0.2.11"
