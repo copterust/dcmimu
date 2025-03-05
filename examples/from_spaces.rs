@@ -37,7 +37,8 @@ fn main() {
             parse_float(vec[8]),
             parse_float(vec[9]),
         );
-        let (ypr, _gyro_biases) = dcmimu.update((gx, gy, gz), (ax, ay, az), dt_s);
+        dcmimu.update((gx, gy, gz), (ax, ay, az), dt_s);
+        let ypr = dcmimu.to_euler_angles();
 
         for f in [ypr.yaw, ypr.pitch, ypr.roll, ry, rp, rr].into_iter() {
             let mut b = ryu::Buffer::new();
