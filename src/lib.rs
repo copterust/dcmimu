@@ -34,7 +34,7 @@
 #![deny(warnings)]
 
 extern crate libm;
-use libm::{asinf, atan2f, cosf, sinf, sqrtf};
+use libm::{asinf, atan2f, sqrtf};
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub struct DCMIMU {
@@ -46,7 +46,7 @@ pub struct DCMIMU {
     r_acc2: f32,
     r_a2: f32,
     a0: f32, a1: f32, a2: f32,
-    yaw: f32,
+    R11_new: f32, R21_new: f32,
     // matrix
     P00: f32, P01: f32, P02: f32, P03: f32, P04: f32, P05: f32,
     P10: f32, P11: f32, P12: f32, P13: f32, P14: f32, P15: f32,
@@ -80,7 +80,8 @@ impl DCMIMU {
             a0: 0.0,
             a1: 0.0,
             a2: 0.0,
-            yaw: 0.0,
+            R11_new: 1.0,
+            R21_new: 0.0,
             P00: INITIAL_DCM_VARIANCE,
             P01: 0.0,
             P02: 0.0,
@@ -1025,8 +1026,13 @@ impl DCMIMU {
         // compute Euler angles
         let u_nb1 = gy - self.x4;
         let u_nb2 = gz - self.x5;
-        let cy = cosf(self.yaw);
-        let sy = sinf(self.yaw);
+        // Yaw from previous update is `atan2f(self.R21_new, self.R11_new)`. We
+        // need the cosine (`cy`) and sine (`sy`) of that, which can be
+        // efficiently computed by noting that `cos(atan2(y, x)) == x /
+        // sqrtf(x*x + y*y)` and `sin(atan2(y, x)) == y / sqrtf(x*x + y*y)`.
+        let denominator = sqrtf(self.R11_new * self.R11_new + self.R21_new * self.R21_new);
+        let cy = self.R11_new / denominator;
+        let sy = self.R21_new / denominator;
         let d = sqrtf(x_last[1] * x_last[1] + x_last[2] * x_last[2]);
         let d_inv = 1.0 / d;
         // compute needed parts of rotation matrix R (state and angle based version, equivalent with the commented version above)
@@ -1038,10 +1044,8 @@ impl DCMIMU {
         let R23 = -(x_last[1] * cy + x_last[0] * x_last[2] * sy) * d_inv;
 
         // update needed parts of R for yaw computation
-        let R11_new = R11 + dt * (u_nb2 * R12 - u_nb1 * R13);
-        let R21_new = R21 + dt * (u_nb2 * R22 - u_nb1 * R23);
-
-        self.yaw = atan2f(R21_new, R11_new);
+        self.R11_new = R11 + dt * (u_nb2 * R12 - u_nb1 * R13);
+        self.R21_new = R21 + dt * (u_nb2 * R22 - u_nb1 * R23);
 
         // save the estimated non-gravitational acceleration
         self.a0 = ax - self.x0 * self.g0;
@@ -1052,7 +1056,7 @@ impl DCMIMU {
     /// Returns all angles (yaw, roll, pitch)
     pub fn to_euler_angles(&self) -> EulerAngles {
         EulerAngles {
-            yaw: self.yaw,
+            yaw: atan2f(self.R21_new, self.R11_new),
             pitch: asinf(-self.x0),
             roll: atan2f(self.x1, self.x2),
         }
