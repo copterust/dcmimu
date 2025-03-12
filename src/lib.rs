@@ -22,7 +22,7 @@
 //!     let dt_ms = t_ms - prev_t_ms
 //!     prev_t_ms = t_ms
 //!     # Update dcmimu states (don't forget to use SI):
-//!     dcmimu.update((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
+//!     dcmimu.update_only((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
 //!     let dcm = dcmimu.to_euler_angles();
 //!     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
 //! }
@@ -54,6 +54,7 @@ pub struct DCMIMU {
     P30: f32, P31: f32, P32: f32, P33: f32, P34: f32, P35: f32,
     P40: f32, P41: f32, P42: f32, P43: f32, P44: f32, P45: f32,
     P50: f32, P51: f32, P52: f32, P53: f32, P54: f32, P55: f32,
+    dcm: EulerAngles,
 }
 
 pub const GRAVITY: f32 = 9.81;
@@ -118,14 +119,30 @@ impl DCMIMU {
             P53: 0.0,
             P54: 0.0,
             P55: INITIAL_BIAS_VARIANCE,
+            dcm: EulerAngles::cn_default()
         }
     }
+
+    /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z)
+    /// and dt (seconds); returns current estimations call the `to_euler_angles` method, for the
+    /// gyroscope biases use `gyro_biases`.
+    /// Angles are in rad, biases are in rad/s.
+    /// Note: use `.update_only` if current estimates are not needed on every update,
+    ///       and use `.to_euler_angles` to get current estimates.
+    #[must_use]
+    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) -> (EulerAngles, GyroBiases) {
+        self.update_only(gyro, accel, dt);
+        let dcm = self.to_euler_angles();
+        self.dcm = dcm;
+        return (dcm, self.gyro_biases())
+    }
+
 
     /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
     /// and dt (seconds). To get the current estimations call the `to_euler_angles` method, for the
     /// gyroscope biases use `gyro_biases`.
     /// Angles are in rad, biases are in rad/s.
-    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) {
+    pub fn update_only(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1070,7 +1087,25 @@ impl DCMIMU {
             z: self.x5,
         }
     }
+
+    /// Returns current yaw estimation (updated after calling `.update`).
+    pub fn yaw(&self) -> f32 {
+        self.dcm.yaw
+    }
+
+    /// Returns current pitch estimation (updated after calling `.update`).
+    #[deprecated(note="Please, use '.update_only()' & '.to_euler_angles'")]
+    pub fn pitch(&self) -> f32 {
+        self.dcm.pitch
+    }
+
+    /// Returns current roll estimation (updated after calling `.update`).
+    #[deprecated(note="Please, use '.update_only()' & '.to_euler_angles'")]
+    pub fn roll(&self) -> f32 {
+        self.dcm.roll
+    }
 }
+
 
 /// Represents three dimensions:
 ///  * yaw, nose left or right about an axis running up and down;
@@ -1087,13 +1122,19 @@ pub struct EulerAngles {
     pub roll: f32,
 }
 
-impl Default for EulerAngles {
-    fn default() -> Self {
+impl EulerAngles {
+    const fn cn_default() -> Self {
         EulerAngles {
             yaw: 0.0,
             pitch: 0.0,
             roll: 0.0
         }
+    }
+}
+
+impl Default for EulerAngles {
+    fn default() -> Self {
+        Self::cn_default()
     }
 }
 

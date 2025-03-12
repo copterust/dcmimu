@@ -37,7 +37,7 @@ fn main() {
             parse_float(vec[8]),
             parse_float(vec[9]),
         );
-        dcmimu.update((gx, gy, gz), (ax, ay, az), dt_s);
+        dcmimu.update_only((gx, gy, gz), (ax, ay, az), dt_s);
         let ypr = dcmimu.to_euler_angles();
 
         for f in [ypr.yaw, ypr.pitch, ypr.roll, ry, rp, rr].into_iter() {

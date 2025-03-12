@@ -32,7 +32,7 @@ loop {
     let dt_ms = t_ms - prev_t_ms
     prev_t_ms = t_ms
     // Update dcmimu states (don't forget to use SI):
-    dcmimu.update((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
+    dcmimu.update_only((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
     let dcm = dcmimu.to_euler_angles();
     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
 }
