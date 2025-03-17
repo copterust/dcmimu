@@ -60,12 +60,13 @@ fn main() {
         let (y, p, r) = reference(&record);
         let dt = if prev_t == 0.0 { 0.00 } else { time - prev_t };
         prev_t = time;
-        dcmimu.update((gx, gy, gz), (ax, ay, az), dt as f32);
+        dcmimu.update_only((gx, gy, gz), (ax, ay, az), dt as f32);
+        let euer_angles = dcmimu.to_euler_angles();
         println!(
             "{:2.8},{:2.8},{:2.8},{:2.8},{:2.8},{:2.8}",
-            dcmimu.yaw(),
-            dcmimu.pitch(),
-            dcmimu.roll(),
+            euer_angles.yaw,
+            euer_angles.pitch,
+            euer_angles.roll,
             y,
             p,
             r

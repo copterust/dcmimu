@@ -22,12 +22,9 @@
 //!     let dt_ms = t_ms - prev_t_ms
 //!     prev_t_ms = t_ms
 //!     # Update dcmimu states (don't forget to use SI):
-//!     let (dcm, _gyro_biases) = dcmimu.update((gyro.x, gyro.y, gyro.z),
-//!                             (accel.x, accel.y, accel.z),
-//!                             dt_ms.seconds());
+//!     dcmimu.update_only((gyro.x, gyro.y, gyro.z), (accel.x, accel.y, accel.z), dt_ms.seconds());
+//!     let dcm = dcmimu.to_euler_angles();
 //!     println!("Roll: {}; yaw: {}; pitch: {}", dcm.roll, dcm.yaw, dcm.pitch);
-//!     # Measurements can also be queried without updating:
-//!     println!("{:?} == {}, {}, {}", dcmimu.all(), dcmimu.roll(), dcmimu.yaw(), dcmimu.pitch());
 //! }
 //! ```
 //!
@@ -37,7 +34,7 @@
 #![deny(warnings)]
 
 extern crate libm;
-use libm::{asinf, atan2f, cosf, sinf, sqrtf};
+use libm::{asinf, atan2f, sqrtf};
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub struct DCMIMU {
@@ -49,7 +46,7 @@ pub struct DCMIMU {
     r_acc2: f32,
     r_a2: f32,
     a0: f32, a1: f32, a2: f32,
-    yaw: f32, pitch: f32, roll: f32,
+    R11_new: f32, R21_new: f32,
     // matrix
     P00: f32, P01: f32, P02: f32, P03: f32, P04: f32, P05: f32,
     P10: f32, P11: f32, P12: f32, P13: f32, P14: f32, P15: f32,
@@ -57,6 +54,7 @@ pub struct DCMIMU {
     P30: f32, P31: f32, P32: f32, P33: f32, P34: f32, P35: f32,
     P40: f32, P41: f32, P42: f32, P43: f32, P44: f32, P45: f32,
     P50: f32, P51: f32, P52: f32, P53: f32, P54: f32, P55: f32,
+    dcm: EulerAngles,
 }
 
 pub const GRAVITY: f32 = 9.81;
@@ -83,9 +81,8 @@ impl DCMIMU {
             a0: 0.0,
             a1: 0.0,
             a2: 0.0,
-            yaw: 0.0,
-            pitch: 0.0,
-            roll: 0.0,
+            R11_new: 1.0,
+            R21_new: 0.0,
             P00: INITIAL_DCM_VARIANCE,
             P01: 0.0,
             P02: 0.0,
@@ -122,19 +119,30 @@ impl DCMIMU {
             P53: 0.0,
             P54: 0.0,
             P55: INITIAL_BIAS_VARIANCE,
+            dcm: EulerAngles::cn_default()
         }
     }
 
-    /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
-    /// and dt (seconds) and returns current estimations and current gyroscope
-    /// biases({roll; yaw; pitch}, {gbx, gby, gbz}).
+    /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z)
+    /// and dt (seconds); returns current estimations call the `to_euler_angles` method, for the
+    /// gyroscope biases use `gyro_biases`.
     /// Angles are in rad, biases are in rad/s.
-    pub fn update(
-        &mut self,
-        gyro: (f32, f32, f32),
-        accel: (f32, f32, f32),
-        dt: f32,
-    ) -> (EulerAngles, GyroBiases) {
+    /// Note: use `.update_only` if current estimates are not needed on every update,
+    ///       and use `.to_euler_angles` to get current estimates.
+    #[must_use]
+    pub fn update(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) -> (EulerAngles, GyroBiases) {
+        self.update_only(gyro, accel, dt);
+        let dcm = self.to_euler_angles();
+        self.dcm = dcm;
+        return (dcm, self.gyro_biases())
+    }
+
+
+    /// Updates DCMIMU states with gyro (x, y, z), accel (x, y, z),
+    /// and dt (seconds). To get the current estimations call the `to_euler_angles` method, for the
+    /// gyroscope biases use `gyro_biases`.
+    /// Angles are in rad, biases are in rad/s.
+    pub fn update_only(&mut self, gyro: (f32, f32, f32), accel: (f32, f32, f32), dt: f32) {
         let gx = gyro.0;
         let gy = gyro.1;
         let gz = gyro.2;
@@ -1035,8 +1043,13 @@ impl DCMIMU {
         // compute Euler angles
         let u_nb1 = gy - self.x4;
         let u_nb2 = gz - self.x5;
-        let cy = cosf(self.yaw);
-        let sy = sinf(self.yaw);
+        // Yaw from previous update is `atan2f(self.R21_new, self.R11_new)`. We
+        // need the cosine (`cy`) and sine (`sy`) of that, which can be
+        // efficiently computed by noting that `cos(atan2(y, x)) == x /
+        // sqrtf(x*x + y*y)` and `sin(atan2(y, x)) == y / sqrtf(x*x + y*y)`.
+        let denominator = sqrtf(self.R11_new * self.R11_new + self.R21_new * self.R21_new);
+        let cy = self.R11_new / denominator;
+        let sy = self.R21_new / denominator;
         let d = sqrtf(x_last[1] * x_last[1] + x_last[2] * x_last[2]);
         let d_inv = 1.0 / d;
         // compute needed parts of rotation matrix R (state and angle based version, equivalent with the commented version above)
@@ -1048,43 +1061,22 @@ impl DCMIMU {
         let R23 = -(x_last[1] * cy + x_last[0] * x_last[2] * sy) * d_inv;
 
         // update needed parts of R for yaw computation
-        let R11_new = R11 + dt * (u_nb2 * R12 - u_nb1 * R13);
-        let R21_new = R21 + dt * (u_nb2 * R22 - u_nb1 * R23);
-
-        self.yaw = atan2f(R21_new, R11_new);
-        self.pitch = asinf(-self.x0);
-        self.roll = atan2f(self.x1, self.x2);
+        self.R11_new = R11 + dt * (u_nb2 * R12 - u_nb1 * R13);
+        self.R21_new = R21 + dt * (u_nb2 * R22 - u_nb1 * R23);
 
         // save the estimated non-gravitational acceleration
         self.a0 = ax - self.x0 * self.g0;
         self.a1 = ay - self.x1 * self.g0;
         self.a2 = az - self.x2 * self.g0;
-
-        (self.all(), self.gyro_biases())
     }
 
     /// Returns all angles (yaw, roll, pitch)
-    pub fn all(&self) -> EulerAngles {
+    pub fn to_euler_angles(&self) -> EulerAngles {
         EulerAngles {
-            yaw: self.yaw,
-            pitch: self.pitch,
-            roll: self.roll,
+            yaw: atan2f(self.R21_new, self.R11_new),
+            pitch: asinf(-self.x0),
+            roll: atan2f(self.x1, self.x2),
         }
-    }
-
-    /// Returns current yaw estimation.
-    pub fn yaw(&self) -> f32 {
-        self.yaw
-    }
-
-    /// Returns current pitch estimation.
-    pub fn pitch(&self) -> f32 {
-        self.pitch
-    }
-
-    /// Returns current roll estimation.
-    pub fn roll(&self) -> f32 {
-        self.roll
     }
 
     /// Returns current value of gyro biases.
@@ -1095,7 +1087,25 @@ impl DCMIMU {
             z: self.x5,
         }
     }
+
+    /// Returns current yaw estimation (updated after calling `.update`).
+    pub fn yaw(&self) -> f32 {
+        self.dcm.yaw
+    }
+
+    /// Returns current pitch estimation (updated after calling `.update`).
+    #[deprecated(note="Please, use '.update_only()' & '.to_euler_angles'")]
+    pub fn pitch(&self) -> f32 {
+        self.dcm.pitch
+    }
+
+    /// Returns current roll estimation (updated after calling `.update`).
+    #[deprecated(note="Please, use '.update_only()' & '.to_euler_angles'")]
+    pub fn roll(&self) -> f32 {
+        self.dcm.roll
+    }
 }
+
 
 /// Represents three dimensions:
 ///  * yaw, nose left or right about an axis running up and down;
@@ -1112,13 +1122,19 @@ pub struct EulerAngles {
     pub roll: f32,
 }
 
-impl Default for EulerAngles {
-    fn default() -> Self {
+impl EulerAngles {
+    const fn cn_default() -> Self {
         EulerAngles {
             yaw: 0.0,
             pitch: 0.0,
             roll: 0.0
         }
+    }
+}
+
+impl Default for EulerAngles {
+    fn default() -> Self {
+        Self::cn_default()
     }
 }
 
